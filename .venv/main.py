@@ -3,6 +3,7 @@ import os, time
 from os import PathLike
 from icecream import ic
 import win32com.client as win32
+from win32com.client import Dispatch
 from tkinter.filedialog import askdirectory
 
 
@@ -37,7 +38,13 @@ def handle_COM_error(state: int):
         raise RuntimeError("COM: 13- No PAF/Flex/Voucher exists for the input file")
     elif state == 14:
         raise ValueError("COM: 14- Input file is the same as the output file")
-def stl_to_dcm(input_file: str) -> None:
+def initialize_sdx_COM() -> Dispatch:
+    ic('initializing')
+    sdx = win32.Dispatch("sdx.DelcamExchange")  # connect to sdx COM interface
+    ic('sdx initialized')
+    sdx.Attach()  # attach sdx COM interface
+    return sdx
+def stl_to_dcm(input_file: str, sdx: Dispatch) -> None:
     if not os.path.isfile(input_file):  # validate input
         raise ValueError("item to convert must be a valid PathLike object")
     else:
@@ -46,10 +53,9 @@ def stl_to_dcm(input_file: str) -> None:
         output_file_dir = ic(os.path.splitext(input_file)[0])   # set output file to have same name with new '.stl' ext
         output_file = ic(f"{output_file_dir}.stl")
 
-        ic('initializing')
-        sdx = win32.Dispatch("sdx.DelcamExchange")  # connect to sdx COM interface
-        ic('sdx initialized')
-        sdx.Attach()    # attach sdx COM interface
+        # if sdx.CheckOk != 1:
+        #     sdx = initialize_sdx_COM()
+
         # pass options to sdx
         sdx.SetOption("INPUT_FORMAT", "3Shape")
         sdx.SetOption("OUTPUT_FORMAT", 'STL')
@@ -61,12 +67,12 @@ def stl_to_dcm(input_file: str) -> None:
         if state == 0:  # wait for conversion to finish
             while not sdx.Finished:
                 ic('waiting')
-                time.sleep(0.1)
+                time.sleep(1)
             ic(f'{input_file} converted')
         else:
             handle_COM_error(state) # handle errors
-
-        sdx.Detach()    # disconnect from COM interface
+def disconnect_sdx_COM(sdx: Dispatch):
+    sdx.Detach()  # disconnect from COM interface
 def list_files(directory: PathLike) -> PathLike:
   for root, directories, files in os.walk(directory):
     for filename in files:
@@ -80,15 +86,24 @@ def identify_dcm(path: PathLike) -> PathLike:
     if os.path.splitext(path)[1] == '.dcm':
         return path
 def main() -> None:
+    conversion_list = []
     path = ic(askdirectory(title='Select Folder'))  # shows dialog box and return the path
+
+    script_path = os.path.abspath(__file__)
+    os.chdir(os.path.dirname(script_path))
+    with open("target_config.ini", 'r') as f: # load target contfiguration into target_dict
+        target_dict = ic(json.load(f))
 
     for filename in list_files(path):   # os.walk selected path and return individual filepaths
         if identify_dcm(filename):  # returns filepath if ext is '.dcm', otherwise None
             possible_target = ic(filename)
+            if os.path.split(possible_target)[1] in target_dict.values():
+                conversion_list.append(possible_target)
 
-        with open("target_config.ini", 'r') as f: # load target contfiguration into target_dict
-            target_dict = ic(json.load(f))
-    stl_to_dcm('test.dcm')
+    sdx = initialize_sdx_COM()
+    for target in conversion_list:
+        stl_to_dcm(target, sdx)
+    disconnect_sdx_COM(sdx)
 
 if __name__ == '__main__':
     main()
