@@ -12,3 +12,7 @@ sdx.Execute()
 while not sdx.Finished:
     time.sleep(1)
 sdx.Detach()
+
+for filename in list_files(path):
+    if os.path.splitext(filename)[1] == '.dcm':
+        ic(filename)

@@ -1,0 +1,15 @@
+import json
+
+config = {
+    1: "PrePreparationScan.dcm",
+    2: "Raw Preparation scan.dcm",
+    3: "PreparationScan.dcm",
+    4: "AntagonistScan.dcm",
+    5: "Raw Antagonist scan.dcm",
+    6: "AbutmentAlignmentScan.dcm",
+    7: "Raw Bite scan.dcm",
+    8: "Raw Bite scan2.dcm"
+}
+with open('target_config.ini', 'w+') as f:
+    json.dump(config, f, indent="")
+
