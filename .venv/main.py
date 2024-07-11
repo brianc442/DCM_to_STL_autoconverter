@@ -7,7 +7,7 @@ from win32com.client import Dispatch
 from tkinter.filedialog import askdirectory
 
 
-def handle_COM_error(state: int):
+def handle_COM_error(state: int) -> None:
     if state == -1:
         raise RuntimeError("COM: -1 - The whole world has gone bonkers")
     elif state == 1:
@@ -71,7 +71,7 @@ def stl_to_dcm(input_file: str, sdx: Dispatch) -> None:
             ic(f'{input_file} converted')
         else:
             handle_COM_error(state) # handle errors
-def disconnect_sdx_COM(sdx: Dispatch):
+def disconnect_sdx_COM(sdx: Dispatch) -> None:
     sdx.Detach()  # disconnect from COM interface
 def list_files(directory: PathLike) -> PathLike:
   for root, directories, files in os.walk(directory):
@@ -85,9 +85,14 @@ def identify_dcm(path: PathLike) -> PathLike:
     """
     if os.path.splitext(path)[1] == '.dcm':
         return path
+def get_path() -> PathLike:
+    return askdirectory(title='Select Folder', mustexist=True)
 def main() -> None:
     conversion_list = []
-    path = ic(askdirectory(title='Select Folder'))  # shows dialog box and return the path
+    
+    path = get_path()  # shows dialog box and return the path
+    if not os.path.exists(path):
+        raise ValueError("invalid path")
 
     script_path = os.path.abspath(__file__)
     os.chdir(os.path.dirname(script_path))
@@ -97,6 +102,9 @@ def main() -> None:
     for filename in list_files(path):   # os.walk selected path and return individual filepaths
         if identify_dcm(filename):  # returns filepath if ext is '.dcm', otherwise None
             possible_target = ic(filename)
+            """uncomment to convert all .dcm files"""
+            # conversion_list.append(possible_target)
+            """uncomment to use target_config.ini"""
             if os.path.split(possible_target)[1] in target_dict.values():
                 conversion_list.append(possible_target)
 
