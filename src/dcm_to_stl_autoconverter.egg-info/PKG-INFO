@@ -1,0 +1,26 @@
+Metadata-Version: 2.4
+Name: dcm-to-stl-autoconverter
+Version: 1.0.0
+Summary: Convert 3Shape DCM dental scan files to STL format
+Author: CreoDent Prosthetics
+License: Proprietary
+Keywords: dcm,stl,dental,3shape,conversion
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: Intended Audience :: Healthcare Industry
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Topic :: Scientific/Engineering :: Medical Science Apps.
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: customtkinter>=5.2.2
+Requires-Dist: pywin32>=306
+Provides-Extra: dev
+Requires-Dist: pytest>=7.4.0; extra == "dev"
+Requires-Dist: pytest-cov>=4.1.0; extra == "dev"
+Requires-Dist: pytest-mock>=3.11.1; extra == "dev"
+Requires-Dist: black>=23.7.0; extra == "dev"
+Requires-Dist: flake8>=6.0.0; extra == "dev"
+Requires-Dist: icecream>=2.1.3; extra == "dev"
+Dynamic: license-file
