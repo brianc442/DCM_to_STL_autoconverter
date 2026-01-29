@@ -1,10 +1,13 @@
-import json
-import os, time
+import json, os, time, threading
 from os import PathLike
+from tkinter.filedialog import askdirectory
+from customtkinter import CTk
+
 from icecream import ic
 import win32com.client as win32
 from win32com.client import Dispatch
-from tkinter.filedialog import askdirectory
+
+ic.configureOutput(includeContext=True)
 
 
 def handle_COM_error(state: int) -> None:
@@ -83,7 +86,7 @@ def identify_dcm(path: PathLike) -> PathLike:
     :param path:
     :return: PathLike | None
     """
-    if os.path.splitext(path)[1] == '.dcm':
+    if os.path.splitext(path)[1].lower() == '.dcm':
         return path
 def get_path() -> PathLike:
     return askdirectory(title='Select Folder', mustexist=True)
@@ -97,17 +100,22 @@ def main() -> None:
     script_path = os.path.abspath(__file__)
     os.chdir(os.path.dirname(script_path))
     with open("target_config.ini", 'r') as f: # load target contfiguration into target_dict
-        target_dict = ic(json.load(f))
+        target_dict = json.load(f)
+    with open("mode.ini", 'r') as f:    # load mode
+        mode = json.load(f).__getitem__('mode')
 
     for filename in list_files(path):   # os.walk selected path and return individual filepaths
         if identify_dcm(filename):  # returns filepath if ext is '.dcm', otherwise None
             possible_target = ic(filename)
-            """uncomment to convert all .dcm files"""
-            # conversion_list.append(possible_target)
-            """uncomment to use target_config.ini"""
-            if os.path.split(possible_target)[1] in target_dict.values():
-                conversion_list.append(possible_target)
-
+            if mode == '0':
+                ic(conversion_list.append(possible_target))
+            elif mode == '1':
+                if os.path.split(possible_target)[1] in target_dict.values():
+                    ic(conversion_list.append(possible_target))
+            else:
+                raise ValueError("invalid mode")
+                sys.exit(1)
+    ic(conversion_list)
     sdx = initialize_sdx_COM()
     for target in conversion_list:
         stl_to_dcm(target, sdx)
