@@ -1,0 +1,3 @@
+[console_scripts]
+dcm-to-stl = dcm_to_stl.gui.app:main
+dcm-to-stl-cli = dcm_to_stl.cli.main:main
