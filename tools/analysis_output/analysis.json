@@ -1,0 +1,199 @@
+{
+  "file_path": "/home/user/DCM_to_STL_autoconverter/.venv/test.dcm",
+  "file_size": 72925,
+  "hps_version": "1.1",
+  "schema": "CE",
+  "ce_version": "1.0",
+  "facet_count": 7353,
+  "facet_color": 8421504,
+  "facet_bytes": 8306,
+  "vertex_bytes": 45768,
+  "properties": {
+    "EKID": "1",
+    "ScanSource": "ssImportThirdPartySTL",
+    "SourceApp": "DentalManager.exe#OFFICIAL-2.20.1.0-200616-1;CL e7fbc447aeed02385816699cef49776a27a67e97;2020-06-16 09:13:01;Dental System 2020-1;88.1.7 (build 2.20.1.0)#2020-06-16 07.13[NS]"
+  },
+  "signature_hash": "D007E739CA6C69F2BCBAC8B6833D503E0EB14493",
+  "facet_distribution": {
+    "entropy": 2.07645561543761,
+    "unique_values": 81,
+    "most_common": [
+      [
+        0,
+        3986
+      ],
+      [
+        1,
+        1790
+      ],
+      [
+        2,
+        1672
+      ],
+      [
+        9,
+        370
+      ],
+      [
+        3,
+        249
+      ],
+      [
+        7,
+        95
+      ],
+      [
+        6,
+        13
+      ],
+      [
+        13,
+        10
+      ],
+      [
+        4,
+        8
+      ],
+      [
+        14,
+        6
+      ],
+      [
+        8,
+        6
+      ],
+      [
+        12,
+        6
+      ],
+      [
+        5,
+        5
+      ],
+      [
+        10,
+        5
+      ],
+      [
+        71,
+        3
+      ],
+      [
+        211,
+        3
+      ],
+      [
+        11,
+        3
+      ],
+      [
+        153,
+        2
+      ],
+      [
+        220,
+        2
+      ],
+      [
+        110,
+        2
+      ]
+    ]
+  },
+  "vertex_distribution": {
+    "entropy": 7.9960905473599295,
+    "unique_values": 256
+  },
+  "edgebreaker_analysis": {
+    "facet_count": 7353,
+    "bytes_per_facet": 1.1296069631442949,
+    "theoretical_min_bits": 11911.86,
+    "theoretical_min_bytes": 1488.9825,
+    "header_bytes": [
+      4,
+      3,
+      0,
+      0,
+      3,
+      0,
+      0,
+      0,
+      3,
+      9,
+      0,
+      0,
+      0,
+      0,
+      1,
+      3
+    ],
+    "potential_markers_count": 370,
+    "avg_marker_distance": 22.48238482384824,
+    "nibble_distribution": [
+      [
+        0,
+        12213
+      ],
+      [
+        1,
+        1797
+      ],
+      [
+        2,
+        1679
+      ],
+      [
+        9,
+        381
+      ],
+      [
+        3,
+        256
+      ],
+      [
+        7,
+        102
+      ],
+      [
+        13,
+        24
+      ],
+      [
+        6,
+        23
+      ],
+      [
+        8,
+        23
+      ],
+      [
+        4,
+        22
+      ],
+      [
+        12,
+        22
+      ],
+      [
+        5,
+        19
+      ],
+      [
+        14,
+        17
+      ],
+      [
+        11,
+        13
+      ],
+      [
+        10,
+        12
+      ],
+      [
+        15,
+        9
+      ]
+    ]
+  }
+}
