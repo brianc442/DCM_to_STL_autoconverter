@@ -1,0 +1,16 @@
+{
+  "dcm_path": "/home/user/DCM_to_STL_autoconverter/.venv/test.dcm",
+  "stl_path": "/home/user/DCM_to_STL_autoconverter/.venv/test.stl",
+  "dcm_size": 45768,
+  "stl_size": 45768,
+  "xor_key_entropy": 7.995789093622207,
+  "xor_key_unique_bytes": 256,
+  "has_repeating_pattern": false,
+  "is_substitution_cipher": false,
+  "vertex_analysis": {
+    "unique_vertex_keys": 100,
+    "same_key_per_vertex": false,
+    "unique_key_diffs": 99
+  },
+  "full_key_works": true
+}
