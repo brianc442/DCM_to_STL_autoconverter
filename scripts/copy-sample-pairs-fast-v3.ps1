@@ -34,32 +34,30 @@ $filesFound = 0
 # Search for DCM files in the specific pattern: [Case]/Scans/[Type]/*.dcm
 # Using -Depth 3 limits how deep it searches, making it faster
 try {
-    Write-Host "Scanning (this may take 2-5 minutes for first $SampleSize files)..." -ForegroundColor Yellow
+    Write-Host "Scanning (finding $SampleSize files)..." -ForegroundColor Yellow
 
-    # Stream results instead of collecting all at once
+    # Collect file paths only (fast - no copying yet)
     Get-ChildItem -Path $sourceRoot -Filter "*.dcm" -Recurse -Depth 3 -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.DirectoryName -like "*\Scans\*" } |
         ForEach-Object {
-            # Only take files in the Scans folder structure
-            if ($_.DirectoryName -like "*\Scans\*") {
-                $dcmFiles += $_
-                $filesFound++
+            $dcmFiles += $_
+            $filesFound++
 
-                # Show progress
-                if ($filesFound % 20 -eq 0) {
-                    $elapsed = $stopwatch.Elapsed.TotalSeconds
-                    $rate = $filesFound / $elapsed
-                    Write-Host "`rFound $filesFound DCM files in $($elapsed.ToString('F1'))s ($($rate.ToString('F1')) files/sec)..." -NoNewline -ForegroundColor Yellow
-                }
+            # Show progress
+            if ($filesFound % 50 -eq 0) {
+                $elapsed = $stopwatch.Elapsed.TotalSeconds
+                $rate = $filesFound / $elapsed
+                Write-Host "`rFound $filesFound files ($($rate.ToString('F1'))/sec)..." -NoNewline -ForegroundColor Yellow
+            }
 
-                # Stop once we have enough
-                if ($filesFound -ge $SampleSize) {
-                    Write-Host "`r" -NoNewline
-                    return
-                }
+            # Stop once we have enough
+            if ($filesFound -ge $SampleSize) {
+                Write-Host "`r" -NoNewline
+                break
             }
         }
 } catch {
-    Write-Host "`nWarning: Search interrupted or limited by permissions" -ForegroundColor Yellow
+    Write-Host "`nWarning: Search interrupted" -ForegroundColor Yellow
 }
 
 $stopwatch.Stop()
@@ -82,52 +80,101 @@ if ($dcmFiles.Count -gt $SampleSize) {
     $selected = $dcmFiles
 }
 
-Write-Host "Copying $($selected.Count) files..." -ForegroundColor Yellow
+Write-Host "Copying $($selected.Count) files (using parallel jobs for speed)..." -ForegroundColor Yellow
 Write-Host ""
 
-$copied = 0
-$withStl = 0
-$withoutStl = 0
+$copyStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 
-foreach ($dcmFile in $selected) {
-    $copied++
+# Check PowerShell version for parallel support
+$psVersion = $PSVersionTable.PSVersion.Major
 
-    # Generate unique name
-    $pathParts = $dcmFile.DirectoryName.Replace($sourceRoot, "").Trim('\').Split('\')
-    $caseName = $pathParts[0]  # First part is case name
-    $scanType = $pathParts[-1]  # Last part is Upper/Lower/etc
-    $uniqueName = "${caseName}_${scanType}_$($dcmFile.Name)"
+if ($psVersion -ge 7) {
+    # Use parallel copying (PowerShell 7+)
+    Write-Host "Using parallel copy (4 threads)..." -ForegroundColor Gray
 
-    # Handle long names
-    if ($uniqueName.Length -gt 200) {
-        $hash = [System.BitConverter]::ToString([System.Security.Cryptography.MD5]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($dcmFile.FullName))).Replace("-", "").Substring(0, 8)
-        $uniqueName = "${hash}_$($dcmFile.Name)"
-    }
+    $results = $selected | ForEach-Object -Parallel {
+        $dcmFile = $_
+        $sourceRoot = $using:sourceRoot
+        $destRoot = $using:destRoot
 
-    $destDcmPath = Join-Path $destRoot $uniqueName
-    $destStlPath = $destDcmPath -replace '\.dcm$', '.stl'
+        # Generate unique name
+        $pathParts = $dcmFile.DirectoryName.Replace($sourceRoot, "").Trim('\').Split('\')
+        $caseName = $pathParts[0]
+        $scanType = $pathParts[-1]
+        $uniqueName = "${caseName}_${scanType}_$($dcmFile.Name)"
 
-    # Check for STL
-    $sourceStlPath = Join-Path $dcmFile.DirectoryName ($dcmFile.BaseName + ".stl")
-    $hasStl = Test-Path $sourceStlPath
-
-    try {
-        Copy-Item -Path $dcmFile.FullName -Destination $destDcmPath -Force
-
-        if ($hasStl) {
-            Copy-Item -Path $sourceStlPath -Destination $destStlPath -Force
-            $withStl++
-        } else {
-            $withoutStl++
+        if ($uniqueName.Length -gt 200) {
+            $hash = [System.BitConverter]::ToString([System.Security.Cryptography.MD5]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($dcmFile.FullName))).Replace("-", "").Substring(0, 8)
+            $uniqueName = "${hash}_$($dcmFile.Name)"
         }
 
-        if ($copied % 10 -eq 0 -or $copied -eq $selected.Count) {
-            Write-Host "[$copied/$($selected.Count)] Pairs: $withStl, DCM-only: $withoutStl" -ForegroundColor Cyan
+        $destDcmPath = Join-Path $destRoot $uniqueName
+        $destStlPath = $destDcmPath -replace '\.dcm$', '.stl'
+        $sourceStlPath = Join-Path $dcmFile.DirectoryName ($dcmFile.BaseName + ".stl")
+        $hasStl = Test-Path $sourceStlPath
+
+        try {
+            Copy-Item -Path $dcmFile.FullName -Destination $destDcmPath -Force
+            if ($hasStl) {
+                Copy-Item -Path $sourceStlPath -Destination $destStlPath -Force
+            }
+            return @{Success=$true; HasStl=$hasStl}
+        } catch {
+            return @{Success=$false; Error=$_.Exception.Message}
         }
-    } catch {
-        Write-Host "ERROR: $_" -ForegroundColor Red
+    } -ThrottleLimit 4
+
+    $withStl = ($results | Where-Object { $_.Success -and $_.HasStl }).Count
+    $withoutStl = ($results | Where-Object { $_.Success -and -not $_.HasStl }).Count
+    $errors = ($results | Where-Object { -not $_.Success }).Count
+
+} else {
+    # Fallback to sequential copy (PowerShell 5.x)
+    Write-Host "Using sequential copy (upgrade to PowerShell 7 for faster parallel copy)..." -ForegroundColor Gray
+
+    $copied = 0
+    $withStl = 0
+    $withoutStl = 0
+
+    foreach ($dcmFile in $selected) {
+        $copied++
+
+        $pathParts = $dcmFile.DirectoryName.Replace($sourceRoot, "").Trim('\').Split('\')
+        $caseName = $pathParts[0]
+        $scanType = $pathParts[-1]
+        $uniqueName = "${caseName}_${scanType}_$($dcmFile.Name)"
+
+        if ($uniqueName.Length -gt 200) {
+            $hash = [System.BitConverter]::ToString([System.Security.Cryptography.MD5]::Create().ComputeHash([System.Text.Encoding]::UTF8.GetBytes($dcmFile.FullName))).Replace("-", "").Substring(0, 8)
+            $uniqueName = "${hash}_$($dcmFile.Name)"
+        }
+
+        $destDcmPath = Join-Path $destRoot $uniqueName
+        $destStlPath = $destDcmPath -replace '\.dcm$', '.stl'
+        $sourceStlPath = Join-Path $dcmFile.DirectoryName ($dcmFile.BaseName + ".stl")
+        $hasStl = Test-Path $sourceStlPath
+
+        try {
+            Copy-Item -Path $dcmFile.FullName -Destination $destDcmPath -Force
+            if ($hasStl) {
+                Copy-Item -Path $sourceStlPath -Destination $destStlPath -Force
+                $withStl++
+            } else {
+                $withoutStl++
+            }
+
+            if ($copied % 10 -eq 0) {
+                Write-Host "`r[$copied/$($selected.Count)] Pairs: $withStl, DCM-only: $withoutStl" -NoNewline -ForegroundColor Cyan
+            }
+        } catch {
+            Write-Host "`nERROR: $_" -ForegroundColor Red
+        }
     }
+    Write-Host ""
 }
+
+$copyStopwatch.Stop()
+Write-Host "Copied in $($copyStopwatch.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor Green
 
 Write-Host ""
 Write-Host "=== Summary ===" -ForegroundColor Cyan
