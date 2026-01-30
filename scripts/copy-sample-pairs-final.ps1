@@ -46,9 +46,13 @@ foreach ($caseFolder in $caseFolders) {
     # Progress every 2 seconds
     $now = Get-Date
     if (($now - $lastUpdate).TotalSeconds -ge 2) {
-        $elapsed = $stopwatch.Elapsed.TotalSeconds
-        $rate = $casesScanned / $elapsed
-        Write-Host "`r  Scanned $casesScanned cases, found $($dcmFiles.Count) files ($($rate.ToString('F1')) cases/sec)..." -NoNewline -ForegroundColor Yellow
+        $elapsed = $walkTimer.Elapsed.TotalSeconds
+        if ($elapsed -gt 0) {
+            $rate = $casesScanned / $elapsed
+            Write-Host "`r  Scanned $casesScanned cases, found $($dcmFiles.Count) files ($($rate.ToString('F1')) cases/sec)..." -NoNewline -ForegroundColor Yellow
+        } else {
+            Write-Host "`r  Scanned $casesScanned cases, found $($dcmFiles.Count) files..." -NoNewline -ForegroundColor Yellow
+        }
         $lastUpdate = $now
     }
 
