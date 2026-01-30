@@ -14,7 +14,7 @@ Write-Host "Source: $sourceRoot" -ForegroundColor Gray
 Write-Host "Destination: $destRoot" -ForegroundColor Gray
 Write-Host "Target: $SampleSize files" -ForegroundColor Gray
 Write-Host ""
-Write-Host "Expected structure: [Case]\Scan\[Upper|Lower|Misc]\*.dcm" -ForegroundColor Gray
+Write-Host "Expected structure: [Case]\Scans\[Upper|Lower|Misc]\*.dcm" -ForegroundColor Gray
 Write-Host ""
 
 # Create destination
@@ -46,8 +46,8 @@ foreach ($caseFolder in $caseFolders) {
         $lastUpdate = $now
     }
 
-    # Look for Scan folder
-    $scanFolder = Join-Path $caseFolder.FullName "Scan"
+    # Look for Scans folder (plural!)
+    $scanFolder = Join-Path $caseFolder.FullName "Scans"
 
     if (Test-Path $scanFolder) {
         # Look in Upper, Lower, Misc subfolders
