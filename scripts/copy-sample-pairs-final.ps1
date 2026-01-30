@@ -22,17 +22,23 @@ if (-not (Test-Path $destRoot)) {
 
 # Phase 1: Collect file paths (manual walk - FAST on network shares)
 Write-Host "Phase 1: Finding DCM files..." -ForegroundColor Yellow
-$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+Write-Host ""
+
+# Step 1.1: Enumerate case folders
+Write-Host "  Step 1.1: Enumerating case folders..." -ForegroundColor Gray
+$enumTimer = [System.Diagnostics.Stopwatch]::StartNew()
+$caseFolders = Get-ChildItem -Path $sourceRoot -Directory -ErrorAction SilentlyContinue
+$enumTimer.Stop()
+Write-Host "  ✓ Found $($caseFolders.Count) case folders in $($enumTimer.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor Green
+Write-Host ""
+
+# Step 1.2: Walk folders to find DCM files
+Write-Host "  Step 1.2: Walking folders to collect DCM files..." -ForegroundColor Gray
+$walkTimer = [System.Diagnostics.Stopwatch]::StartNew()
 
 $dcmFiles = @()
 $casesScanned = 0
 $lastUpdate = Get-Date
-
-# Get case folders - do this once
-Write-Host "Enumerating case folders..." -ForegroundColor Gray
-$caseFolders = Get-ChildItem -Path $sourceRoot -Directory -ErrorAction SilentlyContinue
-Write-Host "Found $($caseFolders.Count) case folders" -ForegroundColor Green
-Write-Host ""
 
 foreach ($caseFolder in $caseFolders) {
     $casesScanned++
@@ -73,10 +79,10 @@ foreach ($caseFolder in $caseFolders) {
     if ($dcmFiles.Count -ge $SampleSize) { break }
 }
 
-$stopwatch.Stop()
+$walkTimer.Stop()
 
 Write-Host "`r" -NoNewline
-Write-Host "Found $($dcmFiles.Count) files in $($stopwatch.Elapsed.TotalSeconds.ToString('F1'))s (scanned $casesScanned/$($caseFolders.Count) cases)" -ForegroundColor Green
+Write-Host "  ✓ Found $($dcmFiles.Count) files in $($walkTimer.Elapsed.TotalSeconds.ToString('F1'))s (scanned $casesScanned/$($caseFolders.Count) cases)" -ForegroundColor Green
 Write-Host ""
 
 if ($dcmFiles.Count -eq 0) {
@@ -84,22 +90,31 @@ if ($dcmFiles.Count -eq 0) {
     exit 1
 }
 
-# Randomly select if we found more than needed
+# Step 1.3: Random selection if needed
 $selected = $dcmFiles
 if ($dcmFiles.Count -gt $SampleSize) {
-    Write-Host "Randomly selecting $SampleSize from $($dcmFiles.Count) files..." -ForegroundColor Yellow
+    Write-Host "  Step 1.3: Randomly selecting $SampleSize from $($dcmFiles.Count) files..." -ForegroundColor Gray
+    $selectTimer = [System.Diagnostics.Stopwatch]::StartNew()
     $selected = $dcmFiles | Get-Random -Count $SampleSize
+    $selectTimer.Stop()
+    Write-Host "  ✓ Selected in $($selectTimer.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor Green
+    Write-Host ""
 }
+
+$phase1Time = $enumTimer.Elapsed.TotalSeconds + $walkTimer.Elapsed.TotalSeconds
+Write-Host "Phase 1 complete: $($phase1Time.ToString('F1'))s total" -ForegroundColor Green
 
 # Phase 2: Copy files (parallel on PS7+)
 Write-Host ""
 Write-Host "Phase 2: Copying $($selected.Count) files..." -ForegroundColor Yellow
+Write-Host ""
 
 $copyStopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 $psVersion = $PSVersionTable.PSVersion.Major
 
 if ($psVersion -ge 7) {
-    Write-Host "Using parallel copy (4 threads)..." -ForegroundColor Gray
+    Write-Host "  Using parallel copy (PowerShell $psVersion, 4 threads)..." -ForegroundColor Gray
+    Write-Host "  Copying..." -ForegroundColor Gray
 
     $results = $selected | ForEach-Object -Parallel {
         $dcmFile = $_
@@ -184,10 +199,18 @@ if ($psVersion -ge 7) {
 $copyStopwatch.Stop()
 
 Write-Host ""
+Write-Host "  ✓ Copied in $($copyStopwatch.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor Green
+Write-Host ""
+
 Write-Host "=== Summary ===" -ForegroundColor Cyan
-Write-Host "Find time: $($stopwatch.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor Gray
-Write-Host "Copy time: $($copyStopwatch.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor Gray
-Write-Host "Total time: $($($stopwatch.Elapsed.TotalSeconds + $copyStopwatch.Elapsed.TotalSeconds).ToString('F1'))s" -ForegroundColor Gray
+Write-Host ""
+Write-Host "Timing breakdown:" -ForegroundColor Yellow
+Write-Host "  Phase 1 - Find files:" -ForegroundColor Gray
+Write-Host "    Enumerate folders: $($enumTimer.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor DarkGray
+Write-Host "    Walk & collect:    $($walkTimer.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor DarkGray
+Write-Host "    Subtotal:          $($phase1Time.ToString('F1'))s" -ForegroundColor Gray
+Write-Host "  Phase 2 - Copy files:  $($copyStopwatch.Elapsed.TotalSeconds.ToString('F1'))s" -ForegroundColor Gray
+Write-Host "  TOTAL TIME:            $($($phase1Time + $copyStopwatch.Elapsed.TotalSeconds).ToString('F1'))s" -ForegroundColor Green
 Write-Host ""
 Write-Host "Files copied: $($selected.Count)" -ForegroundColor Green
 Write-Host "  With STL: $withStl pairs" -ForegroundColor Green
